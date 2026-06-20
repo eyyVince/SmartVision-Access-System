@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>SmartVision Access System</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #080c14;
+  --surface: #0d1525;
+  --surface2: #131e33;
+  --accent: #00d4ff;
+  --accent2: #0099cc;
+  --success: #00ff88;
+  --danger: #ff4757;
+  --warn: #ffa502;
+  --text: #e0eaf8;
+  --muted: #4a6080;
+  --border: rgba(0,212,255,0.2);
+}
+
+body {
+  font-family: 'Exo 2', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.app {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.header-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: 18px;
+  color: var(--accent);
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.header-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.status-dot {
+  margin-left: auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.status-dot.active {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.status-dot.scanning {
+  background: var(--accent);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.camera-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.video-wrap {
+  position: relative;
+  aspect-ratio: 4/3;
+  background: #000;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cam-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bracket {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+.tl {
+  top: 16px;
+  left: 16px;
+  border-width: 2px 0 0 2px;
+}
+
+.tr {
+  top: 16px;
+  right: 16px;
+  border-width: 2px 2px 0 0;
+}
+
+.bl {
+  bottom: 16px;
+  left: 16px;
+  border-width: 0 0 2px 2px;
+}
+
+.br {
+  bottom: 16px;
+  right: 16px;
+  border-width: 0 2px 2px 0;
+}
+
+.scan-line {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+}
+
+.scan-line.running {
+  opacity: 1;
+  animation: scanmove 2s infinite ease-in-out;
+}
+
+@keyframes scanmove {
+  0% { top: 16px; }
+  50% { top: calc(100% - 16px); }
+  100% { top: 16px; }
+}
+
+.cam-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.status-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.status-bar.ok {
+  color: var(--success);
+}
+
+.status-bar.err {
+  color: var(--danger);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.btn {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn.danger {
+  color: var(--danger);
+}
+
+.result-panel {
+  background: var(--surface);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.result-list {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.result-item {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.result-data {
+  margin-top: 5px;
+  font-family: monospace;
+  word-break: break-word;
+}
+
+.result-empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.footer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.no-camera {
+  position: absolute;
+  inset: 0;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  background: var(--surface);
+  color: var(--muted);
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="header">
+    <div class="header-icon">📡</div>
+
+    <div>
+      <h1>AUTO ID SCANNER</h1>
+      <div class="header-sub">Barcode · QR Code · RFID</div>
+    </div>
+
+    <div class="status-dot" id="statusDot"></div>
+  </div>
+
+  <div class="camera-panel">
+
+    <div class="video-wrap">
+
+      <video id="video" autoplay playsinline muted></video>
+
+      <div class="cam-overlay">
+        <div class="bracket tl"></div>
+        <div class="bracket tr"></div>
+        <div class="bracket bl"></div>
+        <div class="bracket br"></div>
+
+        <div class="scan-line" id="scanLine"></div>
+      </div>
+
+      <div class="no-camera" id="noCamera">
+        Camera unavailable
+      </div>
+
+    </div>
+
+    <div class="cam-bar">
+      <span>Camera Feed</span>
+      <span id="camRes">— × —</span>
+    </div>
+
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <span class="status-icon">📷</span>
+    <span id="statusText">Initializing camera...</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="btnStop" onclick="stopScanning()">⏹ Stop</button>
+    <button class="btn" onclick="resetScanner()">↺ Reset</button>
+    <button class="btn danger" onclick="clearLog()">✕ Clear</button>
+  </div>
+
+  <div class="result-panel">
+
+    <div class="result-header">
+      <span>Scan Log</span>
+      <span id="resultCount">0 scans</span>
+    </div>
+
+    <div class="result-list" id="resultList">
+      <div class="result-empty">
+        Waiting for scans...
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    AUTO ID SYSTEM v2.1
+  </div>
+
+</div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+const API_URL = "http://localhost:3000/scan";
+const SCAN_INTERVAL_MS = 1500;
+
+let scanning = false;
+let isRequesting = false;
+let scanTimer = null;
+let scanLog = [];
+let cameraReady = false;
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const scanLine = document.getElementById("scanLine");
+const statusBar = document.getElementById("statusBar");
+const statusText = document.getElementById("statusText");
+const statusDot = document.getElementById("statusDot");
+const resultList = document.getElementById("resultList");
+const resultCount = document.getElementById("resultCount");
+const noCamera = document.getElementById("noCamera");
+const camRes = document.getElementById("camRes");
+const btnStop = document.getElementById("btnStop");
+
+async function initCamera() {
+  try {
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "environment",
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    });
+
+    video.srcObject = stream;
+
+    video.onloadedmetadata = () => {
+
+      cameraReady = true;
+
+      camRes.textContent =
+        `${video.videoWidth} × ${video.videoHeight}`;
+
+      statusDot.classList.add("active");
+
+      setStatus("", "📡", "Auto scanning started");
+
+      startScanning();
+    };
+
+  } catch (err) {
+
+    noCamera.style.display = "flex";
+
+    setStatus(
+      "err",
+      "❌",
+      "Camera error: " + err.message
+    );
+  }
+}
+
+function setStatus(type, icon, msg) {
+
+  statusBar.className = "status-bar";
+
+  if (type === "ok") statusBar.classList.add("ok");
+  if (type === "err") statusBar.classList.add("err");
+
+  statusBar.querySelector(".status-icon").textContent = icon;
+
+  statusText.textContent = msg;
+}
+
+function startScanning() {
+
+  if (!cameraReady || scanning) return;
+
+  scanning = true;
+
+  scanLine.classList.add("running");
+
+  statusDot.className = "status-dot scanning";
+
+  btnStop.disabled = false;
+
+  scheduleNextScan();
+}
+
+function scheduleNextScan() {
+
+  if (!scanning) return;
+
+  scanTimer = setTimeout(async () => {
+
+    await capture();
+
+    scheduleNextScan();
+
+  }, SCAN_INTERVAL_MS);
+}
+
+function stopScanning() {
+
+  scanning = false;
+
+  clearTimeout(scanTimer);
+
+  scanLine.classList.remove("running");
+
+  statusDot.className = "status-dot active";
+
+  btnStop.disabled = true;
+
+  setStatus("", "⏹", "Scanning stopped");
+}
+
+function resetScanner() {
+
+  stopScanning();
+
+  startScanning();
+}
+
+function clearLog() {
+
+  scanLog = [];
+
+  resultList.innerHTML = `
+    <div class="result-empty">
+      Waiting for scans...
+    </div>
+  `;
+
+  resultCount.textContent = "0 scans";
+}
+
+async function capture() {
+
+  if (!scanning || isRequesting || !cameraReady) return;
+
+  if (video.videoWidth === 0) return;
+
+  isRequesting = true;
+
+  setStatus("", "📷", "Analyzing frame...");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d");
+
+  ctx.drawImage(video, 0, 0);
+
+  canvas.toBlob(async (blob) => {
+
+    if (!blob) {
+
+      setStatus("err", "❌", "Failed to capture frame");
+
+      isRequesting = false;
+
+      return;
+    }
+
+    const formData = new FormData();
+
+    formData.append("file", blob, "capture.jpg");
+
+    try {
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+
+        setStatus("err", "❌", `Server error ${res.status}`);
+
+        isRequesting = false;
+
+        return;
+      }
+
+      let data;
+
+      try {
+
+        data = await res.json();
+
+      } catch {
+
+        setStatus("err", "❌", "Invalid JSON response");
+
+        isRequesting = false;
+
+        return;
+      }
+
+      if (data.results && data.results.length > 0) {
+
+        data.results.forEach(r => {
+          addResult(r.type, r.data);
+        });
+
+        setStatus(
+          "ok",
+          "✅",
+          `${data.results.length} code(s) detected`
+        );
+
+      } else {
+
+        setStatus("", "📡", "Scanning...");
+      }
+
+    } catch (err) {
+
+      setStatus(
+        "err",
+        "❌",
+        "Connection error: " + err.message
+      );
+
+    } finally {
+
+      isRequesting = false;
+    }
+
+  }, "image/jpeg", 0.7);
+}
+
+function addResult(type, data) {
+
+  const now = Date.now();
+
+  const recent = scanLog.find(r =>
+    r.data === data &&
+    now - r.ts < 3000
+  );
+
+  if (recent) return;
+
+  scanLog.unshift({
+    type,
+    data,
+    ts: now
+  });
+
+  if (scanLog.length > 50) {
+    scanLog.pop();
+  }
+
+  const empty = resultList.querySelector(".result-empty");
+
+  if (empty) empty.remove();
+
+  const item = document.createElement("div");
+
+  item.className = "result-item";
+
+  item.innerHTML = `
+    <div><strong>${type}</strong></div>
+    <div class="result-data">${escapeHtml(data)}</div>
+  `;
+
+  resultList.prepend(item);
+
+  resultCount.textContent =
+    `${scanLog.length} scan${scanLog.length !== 1 ? "s" : ""}`;
+}
+
+function escapeHtml(str) {
+
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+window.addEventListener("beforeunload", () => {
+
+  const stream = video.srcObject;
+
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+});
+
+initCamera();
+</script>
+
+</body>
+</html>
